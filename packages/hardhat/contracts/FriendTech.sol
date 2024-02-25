@@ -9,6 +9,9 @@ contract FriendTech is ERC20 {
 
     mapping(address => uint256) private sharePrice;
     mapping(address => uint256) public totalShares;
+    mapping(address => uint256) public dividendBalance; // Track dividend balances for each user
+
+    event DividendPaid(address indexed receiver, uint256 amount);
 
     constructor() ERC20("FriendTech", "FTK") {
         owner = msg.sender;
@@ -30,6 +33,29 @@ contract FriendTech is ERC20 {
 
     function getTotalShares(address user) public view returns (uint256) {
         return totalShares[user];
+    }
+    
+    function distributeDividends(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than zero");
+        require(msg.sender == owner, "Only the owner can distribute dividends");
+
+        for (address shareholder : totalShares) {
+            uint256 share = totalShares[shareholder];
+            if (share > 0) {
+                uint256 dividend = (amount * share) / totalSupply();
+                dividendBalance[shareholder] += dividend;
+            }
+        }
+    }
+
+    function claimDividends() external {
+        uint256 dividend = dividendBalance[msg.sender];
+        require(dividend > 0, "No dividends to claim");
+
+        dividendBalance[msg.sender] = 0;
+        payable(msg.sender).transfer(dividend);
+
+        emit DividendPaid(msg.sender, dividend);
     }
 
     function buyShares(address seller, uint256 amount) external payable {
